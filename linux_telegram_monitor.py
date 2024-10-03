@@ -25,9 +25,6 @@ TELEGRAM_BOT_TOKEN = str(os.environ.get("TELEGRAM_BOT_TOKEN"))
 TELEGRAM_BOT_CHAT_ID = int(os.environ.get("TELEGRAM_BOT_CHAT_ID") or 0)
 
 
-_quit = False
-
-
 class ProcInfo(NamedTuple):
     name: str
     cmdline: str
