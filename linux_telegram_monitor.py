@@ -178,8 +178,8 @@ def run():
             check_cpu_mem_usage_thresholds, interval=CHECK_EVERY_SEC
         )
 
-    if TAIL_LOG_FILES:
-        asyncio.ensure_future(tail_f(tg_app))
+        if TAIL_LOG_FILES:
+            asyncio.ensure_future(tail_f(tg_app))
 
     tg_app.run_polling()
 
