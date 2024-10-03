@@ -72,7 +72,8 @@ async def report_cpu_mem_usage(bot: Bot, title: str = "CPU and Memory Usage"):
         f"{title}\n"
         f"System time: {datetime.datetime.now().isoformat()}\n"
         f"CPU Usage: {cpu_percent} ({round(cpu_percent_avg)}%)\n"
-        f"Mem Usage: {round(virtual_mem.total / 1024 / 1024)}MB ({round(virtual_mem.percent)}%)\n"
+        f"Mem Usage: {round(virtual_mem.used / 1024 / 1024)}MB "
+        f"of {round(virtual_mem.total / 1024 / 1024)}MB ({round(virtual_mem.percent)}%)\n"
     )
     await bot.send_message(TELEGRAM_BOT_CHAT_ID, msg)
 

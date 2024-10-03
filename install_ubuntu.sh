@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Installing python3 and virtualenv.
 # They are usually already installed in Ubuntu 20.04 and above and this command will do nothing.
@@ -9,7 +10,7 @@ sudo apt-get install -y python3 python3-virtualenv
 if [ -d venv ]; then
   echo "Not creating python virtualenv because venv dir exists."
 else
-  virtualenv -p /usr/bin/python3
+  virtualenv -p /usr/bin/python3 venv
   source venv/bin/activate
   pip install -r requirements.txt
 fi
