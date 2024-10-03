@@ -1,0 +1,12 @@
+[Unit]
+Description=Simple Linux -> Telegram Monitoring Service
+Wants=network.target
+
+[Service]
+Restart=always
+User=root
+WorkingDirectory=${cur_dir}
+ExecStart=${cur_dir}/venv/bin/python linux_telegram_monitor.py
+
+[Install]
+WantedBy=multi-user.target
