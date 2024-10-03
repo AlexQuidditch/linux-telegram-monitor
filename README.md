@@ -6,9 +6,9 @@ Monitor user login and sudo sessions and send notifications via Telegram.
 # Overview
 
 This is a minimalistic Telegram bot for Linux (Ubuntu) monitoring with important features:
-1. Monitors CPU and RAM usage and sends per-process statistics when a threshold is exceeded.
-2. Monitors user logins and sudo via /var/log/auth.log and sends updates to Telegram.
-3. Can be configured to tail any log file and send updates to Telegram.
+- Monitors CPU and RAM usage and sends per-process statistics when a threshold is exceeded. 
+- Monitors user logins and sudo via /var/log/auth.log and sends updates to Telegram.
+- Can be configured to tail any log file and send updates to Telegram.
 
 Main idea why it exists is that on my small VPS there were random CPU
 usage jumps periodically.
