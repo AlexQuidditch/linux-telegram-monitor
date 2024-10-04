@@ -32,7 +32,7 @@ You can use these instructions or install it manually on your own.
 
 ## Pre-requisites
 - git;
-- python3.9 or above.
+- python3.8 or above.
 
 
 ## Installation Steps
