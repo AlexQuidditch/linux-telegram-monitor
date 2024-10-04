@@ -95,6 +95,23 @@ Checking the service logs:
 sudo cat /var/log/syslog
 ```
 
+## Updating
+
+To update - pull the new version from git
+and restart or reinstall the service.
+
+
+Full re-install should be something similar to:
+```shell
+sudo -i
+cd /opt/linux-telegram-monitor
+./uninstall_ubuntu.sh
+rm -rf venv
+git pull origin master
+# check if any new .env config needed
+./install_ubuntu.sh
+```
+
 ## Uninstalling
 
 ```shell
