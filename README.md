@@ -11,6 +11,8 @@ This is a minimalistic Telegram bot for Linux (Ubuntu) monitoring with important
 - Can be configured to tail any log file and send updates to Telegram.
 - Sends per-NIC current network upload and download speed.
 
+![Screenshot](img.png?raw=true)
+
 Main idea why it exists is that on my small VPS there were random CPU
 usage jumps periodically.
 
