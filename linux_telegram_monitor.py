@@ -4,8 +4,9 @@ import datetime
 import os
 import re
 import socket
+import time
 from io import StringIO
-from typing import List, Optional
+from typing import List, Optional, Dict
 from typing import NamedTuple
 
 import dotenv
@@ -64,6 +65,10 @@ async def read_proc_info() -> List[ProcInfo]:
     return res
 
 
+def fmt_bytes_speed(bytes_sec: int) -> str:
+    return str(round(bytes_sec / 1024.0 / 1024.0 * 8, 2)) + " MBit/s"
+
+
 async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
     cpu_percent: List[float] = psutil.cpu_percent(interval=None, percpu=True)
     cpu_count = psutil.cpu_count()
@@ -71,26 +76,37 @@ async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
     virtual_mem = psutil.virtual_memory()
     users = psutil.users()
 
-    icons = "🐎🐑🐗🐘🐙🐚🐛🐜🐝🐞🐟🐠🐡🐢🐦🐧🐨🐩🐫🐬🐯🐳"
-
-    def user_icn(name: str) -> str:
-        return icons[hash(name) % len(icons)]
-
-    msg_users = "\n".join(
-        f"{user_icn(u.name)} {u.name} | {u.host} | {u.terminal} | {datetime.datetime.fromtimestamp(u.started).isoformat()}"
-        for u in users
+    net_counters_start: Dict[str, NamedTuple] = psutil.net_io_counters(
+        pernic=True, nowrap=True
     )
+    net_counters_start_time = time.time()
+
+    # read_proc_info() makes ~1 sec pause to measure per-process cpu usage
+    proc_info = await read_proc_info()
+
+    net_counters_end: Dict[str, NamedTuple] = psutil.net_io_counters(
+        pernic=True, nowrap=True
+    )
+    net_counters_end_time = time.time()
+
+    msg_net_speed = render_net_counters_per_nic(
+        net_counters_end,
+        net_counters_end_time,
+        net_counters_start,
+        net_counters_start_time,
+    )
+
+    msg_users = render_logged_in_users(users)
     msg = (
         f"<b>{title}</b>\n"
         f"<b>System time:</b> {datetime.datetime.now().isoformat()}\n"
         f"<b>CPU Usage</b>: {cpu_percent} ({round(cpu_percent_avg)}%)\n"
         f"<b>Mem Usage</b>: {round(virtual_mem.used / 1024 / 1024)}MB "
         f"of {round(virtual_mem.total / 1024 / 1024)}MB ({round(virtual_mem.percent)}%)\n"
-        f"<b>Users:</b>\n{msg_users}"
+        f"<b>Users:</b>\n{msg_users}\n"
+        f"<b>Network Usage:</b>\n{msg_net_speed}"
     )
     await bot.send_message(TELEGRAM_BOT_CHAT_ID, msg, parse_mode=ParseMode.HTML)
-
-    proc_info = await read_proc_info()
 
     def render_csv(proc_infos: List[ProcInfo]) -> StringIO:
         res = StringIO()
@@ -121,6 +137,41 @@ async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
         ),
         filename=f"top_mem_usage_processes_{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv",
     )
+
+
+def render_logged_in_users(users):
+    icons = "🐎🐑🐗🐘🐙🐚🐛🐜🐝🐞🐟🐠🐡🐢🐦🐧🐨🐩🐫🐬🐯🐳"
+
+    def user_icn(name: str) -> str:
+        return icons[hash(name) % len(icons)]
+
+    msg_users = "\n".join(
+        f"{user_icn(u.name)} {u.name} | {u.host} | {u.terminal} | {datetime.datetime.fromtimestamp(u.started).isoformat()}"
+        for u in users
+    )
+    return msg_users
+
+
+def render_net_counters_per_nic(
+    net_counters_end, net_counters_end_time, net_counters_start, net_counters_start_time
+):
+    time_passed_sec = net_counters_end_time - net_counters_start_time
+    msg_net_speed = []
+    for nic_name, counters_end in net_counters_end.items():
+        counters_start = net_counters_start.get(nic_name)
+        if counters_start:
+            recv = (
+                counters_end.bytes_recv - counters_start.bytes_recv
+            ) / time_passed_sec
+            sent = (
+                counters_end.bytes_sent - counters_start.bytes_sent
+            ) / time_passed_sec
+            if recv > 0 or sent > 0:
+                msg_net_speed.append(
+                    f"⬇ {fmt_bytes_speed(recv): <25} ⬆ {fmt_bytes_speed(sent): <25}  {nic_name}"
+                )
+    msg_net_speed = "\n".join(msg_net_speed)
+    return msg_net_speed
 
 
 async def check_cpu_mem_usage_thresholds(context: CallbackContext):
