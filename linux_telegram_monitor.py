@@ -2,27 +2,31 @@ import asyncio
 import csv
 import datetime
 import os
+import re
 import socket
 from io import StringIO
-from typing import List
+from typing import List, Optional
 from typing import NamedTuple
 
 import dotenv
 import psutil
 from async_tail import atail
 from telegram import Update, Bot
+from telegram.constants import ParseMode
 from telegram.ext import Application, ContextTypes, CommandHandler, CallbackContext
 
 dotenv.load_dotenv()
 
+TELEGRAM_BOT_TOKEN = str(os.environ.get("TELEGRAM_BOT_TOKEN"))
+TELEGRAM_BOT_CHAT_ID = int(os.environ.get("TELEGRAM_BOT_CHAT_ID") or 0)
 
 CHECK_EVERY_SEC = float(os.environ.get("CHECK_EVERY_SEC", 5))
 CPU_USAGE_PERC_THRESHOLD = float(os.environ.get("CPU_USAGE_PERC_THRESHOLD", 80))
 MEM_USAGE_PERC_THRESHOLD = float(os.environ.get("MEM_USAGE_PERC_THRESHOLD", 80))
 TAIL_LOG_FILES = os.environ.get("TAIL_LOG_FILES", "")
-
-TELEGRAM_BOT_TOKEN = str(os.environ.get("TELEGRAM_BOT_TOKEN"))
-TELEGRAM_BOT_CHAT_ID = int(os.environ.get("TELEGRAM_BOT_CHAT_ID") or 0)
+TAIL_LOG_FILES_LINE_EXCLUDE_REGEXP = os.environ.get(
+    "TAIL_LOG_FILES_LINE_EXCLUDE_REGEXP"
+)
 
 
 class ProcInfo(NamedTuple):
@@ -60,19 +64,31 @@ async def read_proc_info() -> List[ProcInfo]:
     return res
 
 
-async def report_cpu_mem_usage(bot: Bot, title: str = "CPU and Memory Usage"):
+async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
     cpu_percent: List[float] = psutil.cpu_percent(interval=None, percpu=True)
     cpu_count = psutil.cpu_count()
     cpu_percent_avg = sum(cpu_percent) / cpu_count
     virtual_mem = psutil.virtual_memory()
-    msg = (
-        f"{title}\n"
-        f"System time: {datetime.datetime.now().isoformat()}\n"
-        f"CPU Usage: {cpu_percent} ({round(cpu_percent_avg)}%)\n"
-        f"Mem Usage: {round(virtual_mem.used / 1024 / 1024)}MB "
-        f"of {round(virtual_mem.total / 1024 / 1024)}MB ({round(virtual_mem.percent)}%)\n"
+    users = psutil.users()
+
+    icons = "🐎🐑🐗🐘🐙🐚🐛🐜🐝🐞🐟🐠🐡🐢🐦🐧🐨🐩🐫🐬🐯🐳"
+
+    def user_icn(name: str) -> str:
+        return icons[hash(name) % len(icons)]
+
+    msg_users = "\n".join(
+        f"{user_icn(u.name)} {u.name} | {u.host} | {u.terminal} | {datetime.datetime.fromtimestamp(u.started).isoformat()}"
+        for u in users
     )
-    await bot.send_message(TELEGRAM_BOT_CHAT_ID, msg)
+    msg = (
+        f"<b>{title}</b>\n"
+        f"<b>System time:</b> {datetime.datetime.now().isoformat()}\n"
+        f"<b>CPU Usage</b>: {cpu_percent} ({round(cpu_percent_avg)}%)\n"
+        f"<b>Mem Usage</b>: {round(virtual_mem.used / 1024 / 1024)}MB "
+        f"of {round(virtual_mem.total / 1024 / 1024)}MB ({round(virtual_mem.percent)}%)\n"
+        f"<b>Users:</b>\n{msg_users}"
+    )
+    await bot.send_message(TELEGRAM_BOT_CHAT_ID, msg, parse_mode=ParseMode.HTML)
 
     proc_info = await read_proc_info()
 
@@ -115,7 +131,7 @@ async def check_cpu_mem_usage_thresholds(context: CallbackContext):
         sum(cpu_percent) / cpu_number > CPU_USAGE_PERC_THRESHOLD
         or virtual_mem.percent > MEM_USAGE_PERC_THRESHOLD
     ):
-        await report_cpu_mem_usage(
+        await report_status(
             context.bot, title="🚨 CPU or Memory Usage Threshold Exceeded 🚨"
         )
 
@@ -134,18 +150,21 @@ async def tg_cmd_handler_start(
         )
 
 
-async def tg_cmd_handler_cpu_mem_usage(
+async def tg_cmd_handler_status(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
     if update.message.chat_id == TELEGRAM_BOT_CHAT_ID:
-        await report_cpu_mem_usage(context.bot)
+        await report_status(context.bot)
 
 
-async def tail_f(tg_app: Application):
-    paths = TAIL_LOG_FILES.split(";")
+async def tail_f(
+    tg_app: Application, paths: List[str], re_exclude_line: Optional[re.Pattern] = None
+):
     print(f"Monitoring log file(s): {paths}")
+    if re_exclude_line:
+        print(f"Excluding log lines regexp: {re_exclude_line}")
     async for line, fn in atail(*paths):
-        if tg_app.running:
+        if tg_app.running and (not re_exclude_line or not re_exclude_line.search(line)):
             await tg_app.bot.send_message(TELEGRAM_BOT_CHAT_ID, f"{fn}\n{line}")
 
 
@@ -172,14 +191,22 @@ def run():
 
     tg_app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     tg_app.add_handler(CommandHandler("start", tg_cmd_handler_start))
-    tg_app.add_handler(CommandHandler("cpu_mem_usage", tg_cmd_handler_cpu_mem_usage))
+    tg_app.add_handler(CommandHandler("status", tg_cmd_handler_status))
     if TELEGRAM_BOT_CHAT_ID:
         tg_app.job_queue.run_repeating(
             check_cpu_mem_usage_thresholds, interval=CHECK_EVERY_SEC
         )
 
         if TAIL_LOG_FILES:
-            asyncio.ensure_future(tail_f(tg_app))
+            paths = TAIL_LOG_FILES.split(";")
+            re_exclude_line = (
+                re.compile(TAIL_LOG_FILES_LINE_EXCLUDE_REGEXP)
+                if TAIL_LOG_FILES_LINE_EXCLUDE_REGEXP
+                else None
+            )
+            asyncio.ensure_future(
+                tail_f(tg_app, paths=paths, re_exclude_line=re_exclude_line)
+            )
 
     tg_app.run_polling()
 

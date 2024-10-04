@@ -16,6 +16,12 @@ usage jumps periodically.
 I wanted a small and simple monitoring script to send alerts to Telegram.
 But I did not find one to send the per-process details to debug the usage jumps.
 
+It does not pretend to be super-clean or fully featured, but a quick and simple 
+implementation fitting basic needs: monitor a small VPS linux server for anomalies
+or unexpected login attempts.
+
+Please fill free to use or change it upon your will or contact me if you need any help.
+
 # Installation and Configuration
 
 Tested on Ubuntu 22.04.
