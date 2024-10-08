@@ -66,7 +66,34 @@ async def read_proc_info() -> List[ProcInfo]:
 
 
 def fmt_bytes_speed(bytes_sec: int) -> str:
-    return str(round(bytes_sec / 1024.0 / 1024.0 * 8, 2)) + " MBit/s"
+    bt = bytes_sec * 8
+    if bt < 1024:
+        return str(round(bt)) + "Bit/s"
+    elif bt < 1024**2:
+        return str(round(bt / 1024, 1)) + "Kbit/s"
+    elif bt < 1024**3:
+        return str(round(bt / 1024**2, 1)) + "Mbit/s"
+    elif bt < 1024**4:
+        return str(round(bt / 1024**3, 1)) + "Gbit/s"
+    else:
+        return str(round(bt / 1024**4, 1)) + "Tbit/s"
+
+
+def fmt_datetime(dt: datetime.datetime) -> str:
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+def fmt_mem_bytes(bt: float) -> str:
+    if bt < 1024:
+        return str(round(bt)) + "B"
+    elif bt < 1024**2:
+        return str(round(bt / 1024, 1)) + "KB"
+    elif bt < 1024**3:
+        return str(round(bt / 1024**2, 1)) + "MB"
+    elif bt < 1024**4:
+        return str(round(bt / 1024**3, 1)) + "GB"
+    else:
+        return str(round(bt / 1024**4, 1)) + "TB"
 
 
 async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
@@ -96,15 +123,17 @@ async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
         net_counters_start_time,
     )
 
+    cpu_usage_str = ("\n" if len(cpu_percent) > 2 else " ") + str(
+        [round(f) for f in cpu_percent]
+    )
     msg_users = render_logged_in_users(users)
     msg = (
         f"<b>{title}</b>\n"
-        f"<b>System time:</b> {datetime.datetime.now().isoformat()}\n"
-        f"<b>CPU Usage</b>: {cpu_percent} ({round(cpu_percent_avg)}%)\n"
-        f"<b>Mem Usage</b>: {round(virtual_mem.used / 1024 / 1024)}MB "
-        f"of {round(virtual_mem.total / 1024 / 1024)}MB ({round(virtual_mem.percent)}%)\n"
-        f"<b>Users:</b>\n{msg_users}\n"
-        f"<b>Network Usage:</b>\n{msg_net_speed}"
+        f"\n<b>System time:</b> {fmt_datetime(datetime.datetime.now())}\n"
+        f"\n<b>CPU Core Usage %</b>:{cpu_usage_str}\n"
+        f"\n<b>Mem Usage</b>: {fmt_mem_bytes(virtual_mem.used)} of {fmt_mem_bytes(virtual_mem.total)}\n"
+        f"\n<b>Users:</b>\n{msg_users}\n"
+        f"\n<b>Network Usage:</b>\n{msg_net_speed}"
     )
     await bot.send_message(TELEGRAM_BOT_CHAT_ID, msg, parse_mode=ParseMode.HTML)
 
@@ -146,7 +175,7 @@ def render_logged_in_users(users):
         return icons[hash(name) % len(icons)]
 
     msg_users = "\n".join(
-        f"{user_icn(u.name)} {u.name} | {u.host} | {u.terminal} | {datetime.datetime.fromtimestamp(u.started).isoformat()}"
+        f"{user_icn(u.name)} {u.name} | {u.host} | {u.terminal} | {fmt_datetime(datetime.datetime.fromtimestamp(u.started))}"
         for u in users
     )
     return msg_users
@@ -168,7 +197,9 @@ def render_net_counters_per_nic(
             ) / time_passed_sec
             if recv > 0 or sent > 0:
                 msg_net_speed.append(
-                    f"⬇ {fmt_bytes_speed(recv): <25} ⬆ {fmt_bytes_speed(sent): <25}  {nic_name}"
+                    f"<b>{nic_name}</b>\n"
+                    f"⬇ {fmt_bytes_speed(recv)}\n"
+                    f"⬆ {fmt_bytes_speed(sent)}"
                 )
     msg_net_speed = "\n".join(msg_net_speed)
     return msg_net_speed
