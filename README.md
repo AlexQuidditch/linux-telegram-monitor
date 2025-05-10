@@ -1,6 +1,11 @@
+Forked from (here)[https://gitflic.ru/project/mviktorov/linux-telegram-monitor].
+
+What's added:
+- Add TELEGRAM_BOT_THREAD_ID support for message threading in Telegram bot
+
 # About
 A simple Telegram bot for monitoring Linux machines:
-- CPU and RAM usage thresholds. 
+- CPU and RAM usage thresholds.
 - On alert - sends top 20 processes sorted by memory usage / CPU usage.
 - Notifies on user logins and sudo by tracking /var/log/auth.log.
 - Sends per-NIC current network upload and download speed.
@@ -17,7 +22,7 @@ usage jumps periodically.
 I wanted a small and simple monitoring script to send alerts to Telegram.
 But I did not find one to send the per-process details to debug the usage jumps.
 
-It does not pretend to be super-clean or fully featured, but a quick and simple 
+It does not pretend to be super-clean or fully featured, but a quick and simple
 implementation fitting basic needs: monitor a small VPS linux server for anomalies
 or unexpected login attempts.
 
@@ -49,7 +54,7 @@ cd linux_telegram_monitor
 See install_ubuntu.sh for the exact installation steps.
 
 In short: it prepares a python virtualenv and installs the python
-script as a systemd service. 
+script as a systemd service.
 
 The script will be run from the current directory.
 
@@ -68,7 +73,7 @@ sudo systemctl restart linux-telegram-monitor
 ```
 
 ### Get and fill your chat ID
-Now we have the bot token but to ensure that it is only you 
+Now we have the bot token but to ensure that it is only you
 who sees the messages we need to hardcode your chat ID into the service.
 
 The only way to know the chat ID is to contact the bot - it
@@ -88,7 +93,7 @@ Now it should be working.
 ### Checking status and logs
 Checking the service status:
 ```shell
-sudo systemctl status linux-telegram-monitor 
+sudo systemctl status linux-telegram-monitor
 ```
 
 Checking the service logs:

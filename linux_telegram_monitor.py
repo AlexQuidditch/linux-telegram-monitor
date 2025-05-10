@@ -20,6 +20,7 @@ dotenv.load_dotenv()
 
 TELEGRAM_BOT_TOKEN = str(os.environ.get("TELEGRAM_BOT_TOKEN"))
 TELEGRAM_BOT_CHAT_ID = int(os.environ.get("TELEGRAM_BOT_CHAT_ID") or 0)
+TELEGRAM_BOT_THREAD_ID = int(os.environ.get("TELEGRAM_BOT_THREAD_ID") or 0)
 
 CHECK_EVERY_SEC = float(os.environ.get("CHECK_EVERY_SEC", 5))
 CPU_USAGE_PERC_THRESHOLD = float(os.environ.get("CPU_USAGE_PERC_THRESHOLD", 80))
@@ -135,7 +136,12 @@ async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
         f"\n<b>Users:</b>\n{msg_users}\n"
         f"\n<b>Network Usage:</b>\n{msg_net_speed}"
     )
-    await bot.send_message(TELEGRAM_BOT_CHAT_ID, msg, parse_mode=ParseMode.HTML)
+    await bot.send_message(
+        chat_id=TELEGRAM_BOT_CHAT_ID,
+        message_thread_id=TELEGRAM_BOT_THREAD_ID,
+        text=msg,
+        parse_mode=ParseMode.HTML,
+    )
 
     def render_csv(proc_infos: List[ProcInfo]) -> StringIO:
         res = StringIO()
@@ -153,14 +159,16 @@ async def report_status(bot: Bot, title: str = "🌿 ️System Status 🌿"):
         return res
 
     await bot.send_document(
-        TELEGRAM_BOT_CHAT_ID,
+        chat_id=TELEGRAM_BOT_CHAT_ID,
+        message_thread_id=TELEGRAM_BOT_THREAD_ID,
         document=render_csv(
             sorted(proc_info, key=lambda p: p.cpu_percent, reverse=True)[:20]
         ),
         filename=f"top_cpu_usage_processes_{datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.csv",
     )
     await bot.send_document(
-        TELEGRAM_BOT_CHAT_ID,
+        chat_id=TELEGRAM_BOT_CHAT_ID,
+        message_thread_id=TELEGRAM_BOT_THREAD_ID,
         document=render_csv(
             sorted(proc_info, key=lambda p: p.mem_percent, reverse=True)[:20]
         ),
@@ -247,7 +255,11 @@ async def tail_f(
         print(f"Excluding log lines regexp: {re_exclude_line}")
     async for line, fn in atail(*paths):
         if tg_app.running and (not re_exclude_line or not re_exclude_line.search(line)):
-            await tg_app.bot.send_message(TELEGRAM_BOT_CHAT_ID, f"{fn}\n{line}")
+            await tg_app.bot.send_message(
+                chat_id=TELEGRAM_BOT_CHAT_ID,
+                message_thread_id=TELEGRAM_BOT_THREAD_ID,
+                text=f"{fn}\n{line}",
+            )
 
 
 def run():
