@@ -1,4 +1,4 @@
-Forked from (here)[https://gitflic.ru/project/mviktorov/linux-telegram-monitor].
+Forked from [here](https://gitflic.ru/project/mviktorov/linux-telegram-monitor).
 
 What's added:
 - Add TELEGRAM_BOT_THREAD_ID support for message threading in Telegram bot
